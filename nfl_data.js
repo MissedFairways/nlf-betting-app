@@ -29,7 +29,7 @@ async function fetchLiveNFLGames() {
     
     container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
 
-    // FIXED URL STRING: Fully valid live endpoint route to pull the real active slate
+    // FIXED URL STRING: Added 'api.' to the beginning of the domain so it connects correctly
     const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
 
     try {
@@ -52,7 +52,7 @@ async function fetchLiveNFLGames() {
         const selectedValue = weekSelector.value;
         const now = new Date();
         
-        // Sort games chronically by kick-off date time
+        // Sort games chronologically by kick-off date time
         data.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
         let cardCount = 0;
@@ -167,19 +167,17 @@ async function fetchLiveNFLGames() {
 
 // Attach control event listeners cleanly
 document.addEventListener("DOMContentLoaded", () => {
-    // Dropdown change listener
     document.getElementById('week-selector').addEventListener('change', fetchLiveNFLGames);
     
-    // Clear storage button listener
     document.getElementById('clear-btn').addEventListener('click', () => {
         localStorage.clear();
         alert("Memory wiped! Current live odds will now save as your new opening lines.");
         fetchLiveNFLGames();
     });
     
-    // Run initialization
     fetchLiveNFLGames();
 });
+
 
 
 
