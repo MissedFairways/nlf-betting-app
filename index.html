@@ -1,93 +1,51 @@
-const API_KEY = '73d10592cf5d95e3eb88dbe28755dca7';
-
-function getHistoricalMacroTrends(homeTeam, favoriteTeam) {
-    const isHomeFavorite = (homeTeam === favoriteTeam);
-    if (isHomeFavorite) {
-        return { scenarioLabel: "Scenario: Home Favorite vs Road Underdog", favRate: "47.8", dogRate: "52.2", edgeRole: "Road Underdog" };
-    } else {
-        return { scenarioLabel: "Scenario: Road Favorite vs Home Underdog", favRate: "50.9", dogRate: "49.1", edgeRole: "Road Favorite" };
-    }
-}
-
-async function fetchLiveNFLGames() {
-    const container = document.getElementById('games-container');
-    container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFL Betting Trends Dashboard</title>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: -apple-system, sans-serif; padding: 15px; margin: 0; }
+        h1 { text-align: center; color: #00e676; margin-bottom: 20px; font-size: 1.6rem; }
+        
+        /* Dark Mode Control Bar Style */
+        .controls-bar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; background-color: #1e1e1e; padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .control-item { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 0.85rem; color: #b0bec5; text-transform: uppercase; font-weight: bold; }
+        select, button { background-color: #2a2a2a; color: #ffffff; border: 1px solid #444; padding: 10px; font-size: 1rem; border-radius: 6px; -webkit-appearance: none; font-family: inherit; }
+        select:focus, button:focus { border-color: #00e676; outline: none; }
+        button { background-color: #b71c1c; color: #ffffff; border: none; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        button:active { background-color: #d32f2f; }
+        
+        /* Game Cards Layout */
+        .game-card { background-color: #1e1e1e; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .matchup-header { font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; display: flex; justify-content: space-between; }
+        .section-title { font-size: 0.9rem; color: #b0bec5; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; font-weight: 600; }
+        .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95rem; }
+        .alert-banner { background-color: #1b5e20; color: #fff; padding: 10px; border-radius: 6px; font-weight: bold; margin-top: 10px; font-size: 0.85rem; border-left: 4px solid #00e676; }
+        .no-movement-banner { background-color: #37474f; color: #cfd8dc; padding: 10px; border-radius: 6px; font-weight: bold; margin-top: 10px; font-size: 0.85rem; border-left: 4px solid #90a4ae; }
+    </style>
+</head>
+<body>
+    <h1>🏈 NFL Trend Analytics</h1>
     
-    // FIXED: Corrected the full web path to target the NFL spreads market specifically
-    const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
+    <!-- Fixed Controls Bar Interface -->
+    <div class="controls-bar">
+        <div class="control-item">
+            <label for="week-selector">📅 Select Schedule Bracket</label>
+            <select id="week-selector">
+                <option value="current" selected>Current Live Board</option>
+                <option value="all">Full Upcoming Schedule</option>
+            </select>
+        </div>
+        <button id="clear-btn">🧹 Clear Tracked Openers</button>
+    </div>
 
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            container.innerHTML = `<p style='text-align:center; color:#ffb300;'>API Key Status Error (${response.status}).</p>`;
-            return;
-        }
-        const data = await response.json();
-        container.innerHTML = "";
+    <div id="games-container"></div>
+    <script src="nfl_data.js?v=4"></script>
+</body>
+</html>
 
-        if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>No scheduled upcoming NFL games found right now.</p>";
-            return;
-        }
-
-        data.forEach(game => {
-            const home = game.home_team;
-            const away = game.away_team;
-            if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
-
-            const dk = game.bookmakers.find(b => b.key === 'draftkings');
-            if (!dk || !dk.markets) return;
-
-            const spreadMarket = dk.markets.find(m => m.key === 'spreads');
-            if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
-
-            // FIXED: Added array bracket indexes [0] and [1] to pull separate teams
-            const out1 = spreadMarket.outcomes[0];
-            const out2 = spreadMarket.outcomes[1];
-
-            let favorite = "";
-            let line = 0;
-
-            if (out1.point < 0) {
-                favorite = out1.name;
-                line = out1.point;
-            } else {
-                favorite = out2.name;
-                line = out2.point;
-            }
-
-            const underdog = (favorite === home) ? away : home;
-            const trends = getHistoricalMacroTrends(home, favorite);
-            
-            // Decides which team gets the baseline edge card alert
-            let macroEdgeTeam = favorite; 
-            if (trends.edgeRole === "Road Underdog" || trends.edgeRole === "Home Underdog") {
-                macroEdgeTeam = underdog;
-            }
-            
-            const simulatedTuesdayLine = line + 1.0;
-
-            const card = document.createElement('div');
-            card.className = 'game-card';
-            card.innerHTML = `
-                <div class="matchup-header"><span>${away} @ ${home}</span><span>${favorite} ${line}</span></div>
-                <div class="section-title">📅 Line Movement Trend</div>
-                <div class="data-row"><span>Tuesday Open: ${simulatedTuesdayLine} → Current: ${line}</span><span>+1.0 Line Shift</span></div>
-                <div class="alert-banner">👉 Line Movement Favors: ${underdog}</div>
-                <div class="section-title">🏛 10-Year League Macro Trends</div>
-                <div class="data-row" style="font-size: 0.8rem; color: #b0bec5; font-style: italic; margin-bottom: 5px;"><span>${trends.scenarioLabel}</span></div>
-                <div class="data-row"><span>Favorite Covers Rate:</span><span>${trends.favRate}%</span></div>
-                <div class="data-row"><span>Underdog Covers Rate:</span><span>${trends.dogRate}%</span></div>
-                <div class="alert-banner">👉 Macro Baseline Favors: ${macroEdgeTeam}</div>
-            `;
-            container.appendChild(card);
-        });
-    } catch (error) {
-        console.error("Fetch failure:", error);
-        container.innerHTML = "<p style='text-align:center; color:#ff1744;'>Error parsing connection data.</p>";
-    }
-}
-window.onload = fetchLiveNFLGames;
 
 
 
