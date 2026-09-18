@@ -51,36 +51,37 @@ async function fetchLiveNFLGames() {
     // Process the live internet data cleanly
     const formattedLiveGames = [];
     
-    rawData.forEach(game => {
-        if (!game.bookmakers || game.bookmakers.length === 0) return;
-        const bookmaker = game.bookmakers[0];
-        
-        if (!bookmaker.markets || bookmaker.markets.length === 0) return;
-        const market = bookmaker.markets[0];
-        
-        if (!market.outcomes || market.outcomes.length < 2) return;
+            rawData.forEach(game => {
+            // 1. Safely locate DraftKings inside the list of bookmakers
+            const dkBookmaker = game.bookmakers.find(b => b.key === 'draftkings');
+            if (!dkBookmaker) return; // Skip if DraftKings hasn't posted a line yet
 
-        const out1 = market.outcomes[0];
-        const out2 = market.outcomes[1];
+            // 2. Locate the point spreads market
+            const spreadMarket = dkBookmaker.markets.find(m => m.key === 'spreads');
+            if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
 
-        let favName = "";
-        let spreadPoint = 0;
+            const out1 = spreadMarket.outcomes[0];
+            const out2 = spreadMarket.outcomes[1];
 
-        if (out1.point < 0) {
-            favName = out1.name;
-            spreadPoint = out1.point;
-        } else {
-            favName = out2.name;
-            spreadPoint = out2.point;
-        }
+            let favName = "";
+            let spreadPoint = 0;
 
-        formattedLiveGames.push({
-            home_team: game.home_team,
-            away_team: game.away_team,
-            favorite: favName,
-            point: spreadPoint
+            // The favorite always has the negative value (e.g., -3)
+            if (out1.point < 0) {
+                favName = out1.name;
+                spreadPoint = out1.point;
+            } else {
+                favName = out2.name;
+                spreadPoint = out2.point;
+            }
+
+            formattedLiveGames.push({
+                home_team: game.home_team,
+                away_team: game.away_team,
+                favorite: favName,
+                point: spreadPoint
+            });
         });
-    });
 
     // Render the processed internet data
     if (formattedLiveGames.length > 0) {
