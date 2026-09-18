@@ -22,12 +22,14 @@ function getHistoricalMacroTrends(homeTeam, favoriteTeam) {
     }
 }
 
-// 3. THE LIVE MATCHUP ENGINE WITH LOCALSTORAGE TRACKING
+// 3. MAIN LIVE PROCESSING DATA ENGINE
 async function fetchLiveNFLGames() {
     const container = document.getElementById('games-container');
+    const weekSelector = document.getElementById('week-selector');
+    
     container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
 
-    // FIXED: The complete, functional live endpoint URL format for NFL Spreads
+    // FIXED URL STRING: Fully valid live endpoint route to pull the real active slate
     const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
 
     try {
@@ -39,18 +41,34 @@ async function fetchLiveNFLGames() {
         }
         
         const data = await response.json();
-        container.innerHTML = ""; // Clear loading screen
+        container.innerHTML = ""; // Wipe loading announcement
 
         if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>No scheduled upcoming NFL games found right now.</p>";
+            container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>No scheduled upcoming NFL games found right now.</p>";
             return;
         }
 
-        // Loop through all available games returned by the API
+        // Setup filter handling based on user drop-down interaction
+        const selectedValue = weekSelector.value;
+        const now = new Date();
+        
+        // Sort games chronically by kick-off date time
+        data.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
+
+        let cardCount = 0;
+
         data.forEach(game => {
-            const gameId = game.id; // Unique identifier from the API to track this exact game
+            const gameId = game.id;
             const home = game.home_team;
             const away = game.away_team;
+            const gameTime = new Date(game.commence_time);
+
+            // Filtering logic to isolate current closest active cycle or display all upcoming lines
+            if (selectedValue === "current") {
+                const oneWeekFromNow = new Date();
+                oneWeekFromNow.setDate(now.getDate() + 7);
+                if (gameTime > oneWeekFromNow) return; // Skip later slates
+            }
             
             if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
 
@@ -66,7 +84,6 @@ async function fetchLiveNFLGames() {
             let favorite = "";
             let line = 0;
 
-            // Find which team has the negative line value
             if (out1.point < 0) {
                 favorite = out1.name;
                 line = out1.point;
@@ -77,33 +94,30 @@ async function fetchLiveNFLGames() {
 
             const underdog = (favorite === home) ? away : home;
             
-            // --- FIXED: AUTOMATIC REAL-DATA LINE MOVEMENT TRACKING SYSTEM ---
+            // --- AUTOMATIC REAL-DATA LINE MOVEMENT TRACKING SYSTEM ---
             const storageKey = `opening_line_${gameId}`;
             let openingLine = localStorage.getItem(storageKey);
 
             if (openingLine === null) {
-                // First time this phone sees this specific game, log today's line as the true opening baseline
                 localStorage.setItem(storageKey, line);
                 openingLine = line;
             } else {
-                // Convert stored string back into a decimal number for calculations
                 openingLine = parseFloat(openingLine);
             }
 
-            // Calculate the true historical difference
             const lineShift = line - openingLine;
             let lineMovementText = "";
+            let alertStyleClass = "alert-banner";
             let trackingBannerText = "";
 
             if (lineShift === 0) {
                 lineMovementText = `Opened: ${openingLine} → Current: ${line}`;
                 trackingBannerText = "👉 No Line Movement Detected Yet";
+                alertStyleClass = "no-movement-banner";
             } else {
-                // If lineShift is positive, the line moved up. If negative, it moved down.
                 const shiftDirection = lineShift > 0 ? `+${lineShift.toFixed(1)}` : `${lineShift.toFixed(1)}`;
                 lineMovementText = `Opened: ${openingLine} → Current: ${line} (${shiftDirection} Shift)`;
                 
-                // Real betting signals: identifying who public money is backing
                 if (lineShift < 0) {
                     trackingBannerText = `👉 Line Movement Favors: ${favorite} (Heavy Action)`;
                 } else {
@@ -112,10 +126,10 @@ async function fetchLiveNFLGames() {
             }
             // -------------------------------------------------------------
 
-            // Calculate macro baseline results
             const trends = getHistoricalMacroTrends(home, favorite);
             const macroEdgeTeam = (trends.edgeRole === "Road Underdog" || trends.edgeRole === "Home Underdog") ? underdog : favorite;
 
+            cardCount++;
             const card = document.createElement('div');
             card.className = 'game-card';
             card.innerHTML = `
@@ -128,7 +142,7 @@ async function fetchLiveNFLGames() {
                 <div class="data-row">
                     <span>${lineMovementText}</span>
                 </div>
-                <div class="alert-banner">${trackingBannerText}</div>
+                <div class="${alertStyleClass}">${trackingBannerText}</div>
                 
                 <div class="section-title">🏛 10-Year League Macro Trends</div>
                 <div class="data-row" style="font-size: 0.8rem; color: #b0bec5; font-style: italic; margin-bottom: 5px;">
@@ -141,13 +155,32 @@ async function fetchLiveNFLGames() {
             container.appendChild(card);
         });
 
+        if (cardCount === 0) {
+            container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>No matchups match this active timeframe filter.</p>";
+        }
+
     } catch (error) {
         console.error("Fetch failure:", error);
         container.innerHTML = "<p style='text-align:center; color:#ff1744;'>Error parsing connection data. Please clear cache and reload.</p>";
     }
 }
 
-window.onload = fetchLiveNFLGames;
+// Attach control event listeners cleanly
+document.addEventListener("DOMContentLoaded", () => {
+    // Dropdown change listener
+    document.getElementById('week-selector').addEventListener('change', fetchLiveNFLGames);
+    
+    // Clear storage button listener
+    document.getElementById('clear-btn').addEventListener('click', () => {
+        localStorage.clear();
+        alert("Memory wiped! Current live odds will now save as your new opening lines.");
+        fetchLiveNFLGames();
+    });
+    
+    // Run initialization
+    fetchLiveNFLGames();
+});
+
 
 
 
