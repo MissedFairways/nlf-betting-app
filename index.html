@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFL Betting Trends Dashboard</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+        }
+        h1 {
+            text-align: center;
+            color: #00e676;
+        }
+        .game-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .matchup-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .section-title {
+            font-size: 1rem;
+            color: #b0bec5;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .alert-banner {
+            background-color: #2e7d32;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🏈 NFL Trend Analytics</h1>
+
+    <!-- Container where our JavaScript will automatically inject the game cards -->
+    <div id="games-container">
+        <!-- The app will dynamically generate content here -->
+    </div>
+
+    <!-- Linking our external JavaScript file -->
+    <script src="nfl_data.js"></script>
+</body>
+</html>
+
+
+
