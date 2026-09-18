@@ -32,7 +32,6 @@ async function fetchLiveNFLGames() {
     try {
         const response = await fetch(apiUrl);
         
-        // If the API server rejects our key or request
         if (!response.ok) {
             container.innerHTML = `<p style='text-align:center; color:#ffb300;'>API Key Status Error (${response.status}). Please verify your key limits or subscription status.</p>`;
             return;
@@ -51,17 +50,15 @@ async function fetchLiveNFLGames() {
             const home = game.home_team;
             const away = game.away_team;
             
-            // Check if bookmakers list exists
             if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
 
-            // Find DraftKings in the array
             const dk = game.bookmakers.find(b => b.key === 'draftkings');
             if (!dk || !dk.markets) return;
 
-            // Find the spreads market layout
             const spreadMarket = dk.markets.find(m => m.key === 'spreads');
             if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
 
+            // FIX: Explicitly grabbing the first team [0] and second team [1] from the list
             const out1 = spreadMarket.outcomes[0];
             const out2 = spreadMarket.outcomes[1];
 
@@ -125,6 +122,7 @@ async function fetchLiveNFLGames() {
 }
 
 window.onload = fetchLiveNFLGames;
+
 
 
 
