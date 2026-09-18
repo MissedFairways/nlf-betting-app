@@ -2,46 +2,47 @@
 const API_KEY = '73d10592cf5d95e3eb88dbe28755dca7';
 
 // 2. THE TRUE 10-YEAR HISTORICAL BASKET MATH ENGINE
-// This returns 100% accurate, real-world historical baselines based on the game's scenario
 function getHistoricalMacroTrends(homeTeam, favoriteTeam) {
     const isHomeFavorite = (homeTeam === favoriteTeam);
 
     if (isHomeFavorite) {
-        // Scenario 1: Home Favorite vs Road Underdog
         return {
-            scenarioLabel: "Scenario A: Home Favorite vs Road Underdog",
-            favRate: "47.8", // Home Fav Cover %
-            dogRate: "52.2", // Road Dog Cover %
+            scenarioLabel: "Scenario: Home Favorite vs Road Underdog",
+            favRate: "47.8", 
+            dogRate: "52.2", 
             edgeRole: "Road Underdog"
         };
     } else {
-        // Scenario 2: Home Underdog vs Road Favorite
         return {
-            scenarioLabel: "Scenario B: Road Favorite vs Home Underdog",
-            favRate: "50.9", // Road Fav Cover %
-            dogRate: "49.1", // Home Dog Cover %
+            scenarioLabel: "Scenario: Road Favorite vs Home Underdog",
+            favRate: "50.9", 
+            dogRate: "49.1", 
             edgeRole: "Road Favorite"
         };
     }
 }
 
-// 3. THE LIVE MATCHUP ENGINE (FIXED DRAFTKINGS PARSER)
+// 3. THE LIVE MATCHUP ENGINE
 async function fetchLiveNFLGames() {
     const container = document.getElementById('games-container');
     container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
 
-    // Live URL targeting point spreads from DraftKings
     const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
 
     try {
         const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error("API Limit or Network Drop");
+        
+        // If the API server rejects our key or request
+        if (!response.ok) {
+            container.innerHTML = `<p style='text-align:center; color:#ffb300;'>API Key Status Error (${response.status}). Please verify your key limits or subscription status.</p>`;
+            return;
+        }
         
         const data = await response.json();
         container.innerHTML = ""; // Clear loading screen
 
         if (!data || data.length === 0) {
-            container.innerHTML = "<p style='text-align:center;'>No scheduled NFL games found right now.</p>";
+            container.innerHTML = "<p style='text-align:center;'>No scheduled upcoming NFL games found right now.</p>";
             return;
         }
 
@@ -50,10 +51,14 @@ async function fetchLiveNFLGames() {
             const home = game.home_team;
             const away = game.away_team;
             
-            // Look into bookmakers layer specifically for draftkings
-            const dk = game.bookmakers.find(b => b.key === 'draftkings');
-            if (!dk || !dk.markets || dk.markets.length === 0) return;
+            // Check if bookmakers list exists
+            if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
 
+            // Find DraftKings in the array
+            const dk = game.bookmakers.find(b => b.key === 'draftkings');
+            if (!dk || !dk.markets) return;
+
+            // Find the spreads market layout
             const spreadMarket = dk.markets.find(m => m.key === 'spreads');
             if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
 
@@ -63,6 +68,7 @@ async function fetchLiveNFLGames() {
             let favorite = "";
             let line = 0;
 
+            // Find which team has the negative line value
             if (out1.point < 0) {
                 favorite = out1.name;
                 line = out1.point;
@@ -73,13 +79,11 @@ async function fetchLiveNFLGames() {
 
             const underdog = (favorite === home) ? away : home;
             
-            // Run our automated scenario math engine for this specific game structure
+            // Calculate macro baseline results
             const trends = getHistoricalMacroTrends(home, favorite);
-
-            // Establish the automated team name with the historical edge
             const macroEdgeTeam = (trends.edgeRole === "Road Underdog" || trends.edgeRole === "Home Underdog") ? underdog : favorite;
 
-            // Simple line shift simulation placeholder until we implement localStorage tracking next
+            // Temporary placeholder until we implement localStorage tracking
             const simulatedTuesdayLine = line + 1.0;
 
             const card = document.createElement('div');
@@ -116,11 +120,12 @@ async function fetchLiveNFLGames() {
 
     } catch (error) {
         console.error("Fetch failure:", error);
-        container.innerHTML = "<p style='text-align:center; color:#ff1744;'>Error connecting to live API lines. Please try a hard refresh (Ctrl + F5).</p>";
+        container.innerHTML = "<p style='text-align:center; color:#ff1744;'>Error parsing connection data. Please clear cache and reload.</p>";
     }
 }
 
 window.onload = fetchLiveNFLGames;
+
 
 
 
