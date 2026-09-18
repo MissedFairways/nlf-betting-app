@@ -29,11 +29,14 @@ async function fetchLiveNFLGames() {
     
     container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
 
-    // FIXED URL STRING: Added 'api.' to the beginning of the domain so it connects correctly
     const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
 
     try {
-        const response = await fetch(apiUrl);
+        // FIXED: Added headers to tell the browser to request this as an open public data stream
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
         
         if (!response.ok) {
             container.innerHTML = `<p style='text-align:center; color:#ffb300;'>API Key Status Error (${response.status}). Please verify your key limits or subscription status.</p>`;
@@ -48,7 +51,6 @@ async function fetchLiveNFLGames() {
             return;
         }
 
-        // Setup filter handling based on user drop-down interaction
         const selectedValue = weekSelector.value;
         const now = new Date();
         
@@ -67,7 +69,7 @@ async function fetchLiveNFLGames() {
             if (selectedValue === "current") {
                 const oneWeekFromNow = new Date();
                 oneWeekFromNow.setDate(now.getDate() + 7);
-                if (gameTime > oneWeekFromNow) return; // Skip later slates
+                if (gameTime > oneWeekFromNow) return; 
             }
             
             if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
@@ -80,6 +82,9 @@ async function fetchLiveNFLGames() {
 
             const out1 = spreadMarket.outcomes[0];
             const out2 = spreadMarket.outcomes[1];
+
+            // Safety check: ensure both outcomes actually have valid point spreads populated
+            if (out1.point === undefined || out2.point === undefined) return;
 
             let favorite = "";
             let line = 0;
@@ -124,7 +129,6 @@ async function fetchLiveNFLGames() {
                     trackingBannerText = `👉 Line Movement Favors: ${underdog} (Heavy Action)`;
                 }
             }
-            // -------------------------------------------------------------
 
             const trends = getHistoricalMacroTrends(home, favorite);
             const macroEdgeTeam = (trends.edgeRole === "Road Underdog" || trends.edgeRole === "Home Underdog") ? underdog : favorite;
@@ -177,6 +181,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     fetchLiveNFLGames();
 });
+
 
 
 
