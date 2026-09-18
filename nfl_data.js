@@ -27,12 +27,10 @@ async function fetchLiveNFLGames() {
     const container = document.getElementById('games-container');
     const weekSelector = document.getElementById('week-selector');
     
-    container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
+    container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live odds stream...</p>";
 
-    // The clean live endpoint route to pull the real active slate
-    const rawApiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
-    
-    // FIXED CONNECTION STRING: Cleaned up the formatting so it targets the internet correctly
+    // FIXED BOOKMAKER TARGET: Switched from premium draftkings to bovada to unlock live spreads on the free tier
+    const rawApiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=bovada`;
     const apiUrl = `https://corsproxy.io?` + encodeURIComponent(rawApiUrl);
 
     try {
@@ -54,7 +52,6 @@ async function fetchLiveNFLGames() {
         const selectedValue = weekSelector.value;
         const now = new Date();
         
-        // Sort games chronologically by kick-off date time
         data.sort((a, b) => new Date(a.commence_time) - new Date(b.commence_time));
 
         let cardCount = 0;
@@ -65,7 +62,6 @@ async function fetchLiveNFLGames() {
             const away = game.away_team;
             const gameTime = new Date(game.commence_time);
 
-            // Filtering logic to isolate current closest active cycle or display all upcoming lines
             if (selectedValue === "current") {
                 const oneWeekFromNow = new Date();
                 oneWeekFromNow.setDate(now.getDate() + 7);
@@ -74,14 +70,15 @@ async function fetchLiveNFLGames() {
             
             if (!game.bookmakers || !Array.isArray(game.bookmakers)) return;
 
-            const dk = game.bookmakers.find(b => b.key === 'draftkings');
-            if (!dk || !dk.markets) return;
+            // Updated loop lookup to find the matching open bookmaker data block
+            const bookmakerData = game.bookmakers.find(b => b.key === 'bovada');
+            if (!bookmakerData || !bookmakerData.markets) return;
 
-            const spreadMarket = dk.markets.find(m => m.key === 'spreads');
+            const spreadMarket = bookmakerData.markets.find(m => m.key === 'spreads');
             if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
 
-            const out1 = spreadMarket.outcomes[0];
-            const out2 = spreadMarket.outcomes[1];
+            const out1 = spreadMarket.outcomes;
+            const out2 = spreadMarket.outcomes;
 
             let favorite = "";
             let line = 0;
@@ -178,6 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
     
     fetchLiveNFLGames();
 });
+
 
 
 
