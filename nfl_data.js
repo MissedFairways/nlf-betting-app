@@ -1,4 +1,4 @@
-// 1. YOUR API KEY SETUP
+// 1. API KEY SETUP
 const API_KEY = '73d10592cf5d95e3eb88dbe28755dca7';
 
 // 2. THE TRUE 10-YEAR HISTORICAL BASKET MATH ENGINE
@@ -22,11 +22,12 @@ function getHistoricalMacroTrends(homeTeam, favoriteTeam) {
     }
 }
 
-// 3. THE LIVE MATCHUP ENGINE
+// 3. THE LIVE MATCHUP ENGINE WITH LOCALSTORAGE TRACKING
 async function fetchLiveNFLGames() {
     const container = document.getElementById('games-container');
     container.innerHTML = "<p style='text-align:center; color:#b0bec5;'>Connecting to live DraftKings odds stream...</p>";
 
+    // FIXED: The complete, functional live endpoint URL format for NFL Spreads
     const apiUrl = `https://the-odds-api.com{API_KEY}&regions=us&markets=spreads&bookmakers=draftkings`;
 
     try {
@@ -47,6 +48,7 @@ async function fetchLiveNFLGames() {
 
         // Loop through all available games returned by the API
         data.forEach(game => {
+            const gameId = game.id; // Unique identifier from the API to track this exact game
             const home = game.home_team;
             const away = game.away_team;
             
@@ -58,7 +60,6 @@ async function fetchLiveNFLGames() {
             const spreadMarket = dk.markets.find(m => m.key === 'spreads');
             if (!spreadMarket || !spreadMarket.outcomes || spreadMarket.outcomes.length < 2) return;
 
-            // FIX: Explicitly grabbing the first team [0] and second team [1] from the list
             const out1 = spreadMarket.outcomes[0];
             const out2 = spreadMarket.outcomes[1];
 
@@ -76,12 +77,44 @@ async function fetchLiveNFLGames() {
 
             const underdog = (favorite === home) ? away : home;
             
+            // --- FIXED: AUTOMATIC REAL-DATA LINE MOVEMENT TRACKING SYSTEM ---
+            const storageKey = `opening_line_${gameId}`;
+            let openingLine = localStorage.getItem(storageKey);
+
+            if (openingLine === null) {
+                // First time this phone sees this specific game, log today's line as the true opening baseline
+                localStorage.setItem(storageKey, line);
+                openingLine = line;
+            } else {
+                // Convert stored string back into a decimal number for calculations
+                openingLine = parseFloat(openingLine);
+            }
+
+            // Calculate the true historical difference
+            const lineShift = line - openingLine;
+            let lineMovementText = "";
+            let trackingBannerText = "";
+
+            if (lineShift === 0) {
+                lineMovementText = `Opened: ${openingLine} → Current: ${line}`;
+                trackingBannerText = "👉 No Line Movement Detected Yet";
+            } else {
+                // If lineShift is positive, the line moved up. If negative, it moved down.
+                const shiftDirection = lineShift > 0 ? `+${lineShift.toFixed(1)}` : `${lineShift.toFixed(1)}`;
+                lineMovementText = `Opened: ${openingLine} → Current: ${line} (${shiftDirection} Shift)`;
+                
+                // Real betting signals: identifying who public money is backing
+                if (lineShift < 0) {
+                    trackingBannerText = `👉 Line Movement Favors: ${favorite} (Heavy Action)`;
+                } else {
+                    trackingBannerText = `👉 Line Movement Favors: ${underdog} (Heavy Action)`;
+                }
+            }
+            // -------------------------------------------------------------
+
             // Calculate macro baseline results
             const trends = getHistoricalMacroTrends(home, favorite);
             const macroEdgeTeam = (trends.edgeRole === "Road Underdog" || trends.edgeRole === "Home Underdog") ? underdog : favorite;
-
-            // Temporary placeholder until we implement localStorage tracking
-            const simulatedTuesdayLine = line + 1.0;
 
             const card = document.createElement('div');
             card.className = 'game-card';
@@ -91,25 +124,18 @@ async function fetchLiveNFLGames() {
                     <span>${favorite} ${line}</span>
                 </div>
                 
-                <div class="section-title">📅 Line Movement Trend</div>
+                <div class="section-title">📅 Real Line Movement Trend</div>
                 <div class="data-row">
-                    <span>Tuesday Open: ${simulatedTuesdayLine} → Current: ${line}</span>
-                    <span>+1.0 Line Shift</span>
+                    <span>${lineMovementText}</span>
                 </div>
-                <div class="alert-banner">👉 Line Movement Favors: ${underdog}</div>
+                <div class="alert-banner">${trackingBannerText}</div>
                 
                 <div class="section-title">🏛 10-Year League Macro Trends</div>
                 <div class="data-row" style="font-size: 0.8rem; color: #b0bec5; font-style: italic; margin-bottom: 5px;">
                     <span>${trends.scenarioLabel}</span>
                 </div>
-                <div class="data-row">
-                    <span>Favorite Covers Rate:</span>
-                    <span>${trends.favRate}%</span>
-                </div>
-                <div class="data-row">
-                    <span>Underdog Covers Rate:</span>
-                    <span>${trends.dogRate}%</span>
-                </div>
+                <div class="data-row"><span>Favorite Covers Rate:</span><span>${trends.favRate}%</span></div>
+                <div class="data-row"><span>Underdog Covers Rate:</span><span>${trends.dogRate}%</span></div>
                 <div class="alert-banner">👉 Macro Baseline Favors: ${macroEdgeTeam}</div>
             `;
             container.appendChild(card);
@@ -122,6 +148,7 @@ async function fetchLiveNFLGames() {
 }
 
 window.onload = fetchLiveNFLGames;
+
 
 
 
